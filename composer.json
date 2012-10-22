@@ -5,7 +5,7 @@
     "type": "library",
     "homepage": "https://github.com/BrookLab/quickbase-php",
     "require": {
-        "php" : ">=4.7.*",
+        "php": ">=4.7.0",
         "ext-curl": "*"
     },
     "support": {
