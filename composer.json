@@ -17,5 +17,8 @@
             "email": "joshua@mcginn.is",
             "homepage": "http://joshuamcginnis.com"
         }
-    ]
+    ],
+    "autoload": {
+        "classmap": ["quickbase.php"]
+    }
 }
