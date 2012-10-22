@@ -1,0 +1,15 @@
+{
+    "name": "brooklab/quickbase",
+    "description": "A full-featured PHP wrapper for the QuickBase API.",
+    "license" : "MIT",
+    "require": {
+        "php" : ">=4.7.*",
+        "ext-curl": "*"
+    },
+    "authors": [
+        {
+            "name": "Joshua McGinnis",
+            "email": "joshua@mcginn.is"
+        }
+    ]
+}
