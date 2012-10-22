@@ -2,14 +2,20 @@
     "name": "brooklab/quickbase",
     "description": "A full-featured PHP wrapper for the QuickBase API.",
     "license" : "MIT",
+    "type": "library",
+    "homepage": "https://github.com/BrookLab/quickbase-php",
     "require": {
         "php" : ">=4.7.*",
         "ext-curl": "*"
     },
+    "support": {
+        "email": "joshua@mcginn.is"
+    }, 
     "authors": [
         {
             "name": "Joshua McGinnis",
-            "email": "joshua@mcginn.is"
+            "email": "joshua@mcginn.is",
+            "homepage": "http://joshuamcginnis.com"
         }
     ]
 }
