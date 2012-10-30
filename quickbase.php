@@ -480,9 +480,11 @@ class QuickBase
       
       if ($this->app_token)
         $xml_packet .= '<apptoken>' . $this->app_token . '</apptoken>';
+
+      //include record id's
+      $xml_packet .= '<includeRids>1</includeRids>';
         
-      $xml_packet .= '<ticket>'.$this->ticket.'</ticket>
-        </qdbapi>';
+      $xml_packet .= '<ticket>'.$this->ticket.'</ticket></qdbapi>';
 
     $response = $this->transmit($xml_packet, 'API_DoQuery');
     }
