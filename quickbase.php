@@ -20,6 +20,7 @@ class QuickBase
   var $proxyAddress = false;
   var $proxyPort;
   var $curlConnection = NULL;
+  var $validateResults;
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -31,7 +32,7 @@ class QuickBase
 
  /* --------------------------------------------------------------------*/  
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '') {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = true) {
     
     if($un) {
       $this->username = $un;
@@ -69,6 +70,7 @@ class QuickBase
     }
 
     $this->xml = $usexml;
+    $this->validateResults = $validate_results;
     
     $this->curlConnection = curl_init();
 
@@ -80,6 +82,31 @@ class QuickBase
   }
   public function set_database_table($db) {
     $this->db_id = $db;
+  }
+  
+  public function hasError($obj) {
+    return $this->getErrorCode($obj) != 0; 
+  }
+  
+  public function getErrorCode($obj) {
+    if (is_object($obj) && is_object($obj->errcode)) 	
+      return $obj->errcode;		
+    else		
+      return -255;
+  }
+  
+  public function getErrorString($obj) {
+    $str = '';
+    
+    if (is_object($obj)) {
+      if (is_object($obj->errtext)) 	
+        $str .= $obj->errtext.'; ';
+      
+      if (is_object($obj->errdetail))
+        $str .= $obj->errdetail;
+    }
+    
+    return $str;
   }
 
   private function transmit($input, $action_name = "", $url = "", $return_xml = true) { 
@@ -132,11 +159,21 @@ class QuickBase
         if (!$r)
           throw new Exception('Can not create connection with Quickbase server for realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n");
           
-        @$response = new SimpleXMLElement($r);
+        try
+        {
+          @$response = new SimpleXMLElement($r);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception(strip_tags($r));
+        }
+        
+        if ($this->validateResults && $this->hasError($response))
+          throw new Exception($this->getErrorString($response));
       }
       catch (Exception $e)
       {
-        throw new Exception('QuickBase: Error while transmitting data. '.($r ? strip_tags($r) : $e->getMessage()));
+        throw new Exception('QuickBase Error: '.$e->getMessage());
       }
     }
     else {
