@@ -19,6 +19,7 @@ class QuickBase
   var $ticketHours = '';  
   var $curlConnection = NULL;
   var $validateResults;
+  var $certificateFile = 'quickbase.crt';
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -65,7 +66,7 @@ class QuickBase
     $_SESSION[self::SESSION_PREFIX.'authtime'] = $startTime;
   }
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false) {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false, $use_certificate = false) {
     
     if($un) {
       $this->username = $un;
@@ -102,7 +103,6 @@ class QuickBase
     
     $this->curlConnection = curl_init();
     
-    curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
     curl_setopt($this->curlConnection, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($this->curlConnection, CURLOPT_TIMEOUT, $this->timeout);
     curl_setopt($this->curlConnection, CURLOPT_FOLLOWLOCATION, false);
@@ -111,6 +111,14 @@ class QuickBase
         curl_setopt($this->curlConnection, CURLOPT_PROXY, $proxy_address);
         curl_setopt($this->curlConnection, CURLOPT_PROXYPORT, $proxy_port);
     }
+    
+    if ($use_certificate && is_file($this->certificateFile)){
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, true);
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYHOST, 2);
+      curl_setopt($this->curlConnection, CURLOPT_CAINFO, $this->certificateFile); 
+    }
+    else
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
     
     $time = time();
     
