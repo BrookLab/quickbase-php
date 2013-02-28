@@ -125,19 +125,21 @@ class QuickBase
     $r = curl_exec($ch); //echo '<pre>'; var_dump($r); echo '</pre>';
 
     if($return_xml) {
-      if (!$r)
+      try 
       {
-        if ($this->xml instanceof SimpleXMLElement)
-          throw new Exception('QuickBase: Authentication Failed against realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n" . $this->xml->asXML());
-        else
-          throw new Exception('QuickBase: Authentication Failed against realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n" . $this->xml);
+        if (!$r)
+          throw new Exception('Can not create connection with Quickbase server for realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n");
+          
+        @$response = new SimpleXMLElement($r);
       }
-
-      $response = new SimpleXMLElement($r);
+      catch (Exception $e)
+      {
+        throw new Exception('QuickBase: Error while transmitting data. '.($r ? strip_tags($r) : $e->getMessage()));
+      }
     }
     else {
       $response = $r;
-    }
+    }    
 
     return $response;
   }
