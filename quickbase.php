@@ -16,7 +16,9 @@ class QuickBase
   var $user_id = 0;
   var $qb_site = "www.quickbase.com";
   var $qb_ssl = "https://www.quickbase.com/db/";
-  var $ticketHours = '';  
+  var $ticketHours = '';
+  var $proxyAddress = false;
+  var $proxyPort;
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -28,7 +30,7 @@ class QuickBase
 
  /* --------------------------------------------------------------------*/  
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '') {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '') {
     
     if($un) {
       $this->username = $un;
@@ -59,6 +61,11 @@ class QuickBase
     if($hours) {
       $this->ticketHours = (int) $hours;
     }   
+    
+    if($proxy_address) {
+        $this->proxyAddress = $proxy_address;
+        $this->proxyPort = $proxy_port;
+    }
 
     $this->xml = $usexml;
 
@@ -94,26 +101,27 @@ class QuickBase
       $this->input = $input; //echo '<pre>'; var_dump($this->input); echo '</pre>';
 
       $ch = curl_init($url);
-      curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      
       curl_setopt($ch, CURLOPT_POST, true);
       curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
       curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
       curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-      // Set timeout
-      curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
-
     }
     else
     {
       $ch = curl_init($input);
-      curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_POST, true); 
-      // Set timeout
-      curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+      curl_setopt($ch, CURLOPT_POST, true);       
 
       $this->input = $input;
+    }
+    
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+    
+    if ($this->proxyAddress){     
+        curl_setopt($ch, CURLOPT_PROXY, $this->proxyAddress);
+        curl_setopt($ch, CURLOPT_PROXYPORT, $this->proxyPort);
     }
 
     $r = curl_exec($ch); //echo '<pre>'; var_dump($r); echo '</pre>';
