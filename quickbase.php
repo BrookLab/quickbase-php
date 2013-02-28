@@ -110,8 +110,6 @@ class QuickBase
     else
     {
       $ch = curl_init($input);
-      curl_setopt($ch, CURLOPT_POST, true);       
-
       $this->input = $input;
     }
     
