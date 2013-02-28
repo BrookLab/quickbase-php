@@ -19,6 +19,7 @@ class QuickBase
   var $ticketHours = '';
   var $proxyAddress = false;
   var $proxyPort;
+  var $curlConnection = NULL;
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -68,6 +69,8 @@ class QuickBase
     }
 
     $this->xml = $usexml;
+    
+    $this->curlConnection = curl_init();
 
     $this->authenticate();    
   }
@@ -100,29 +103,28 @@ class QuickBase
 
       $this->input = $input; //echo '<pre>'; var_dump($this->input); echo '</pre>';
 
-      $ch = curl_init($url);
+      curl_setopt($this->curlConnection, CURLOPT_URL, $url);      
       
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
-      curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+      curl_setopt($this->curlConnection, CURLOPT_POST, true);
+      curl_setopt($this->curlConnection, CURLOPT_HTTPHEADER, $headers);
+      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, $input);
+      curl_setopt($this->curlConnection, CURLOPT_FOLLOWLOCATION, false);
     }
     else
     {
-      $ch = curl_init($input);
-      $this->input = $input;
+      curl_setopt($this->curlConnection, CURLOPT_URL, $this->input = $input);  
     }
     
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+    curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_setopt($this->curlConnection, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($this->curlConnection, CURLOPT_TIMEOUT, $this->timeout);
     
     if ($this->proxyAddress){     
-        curl_setopt($ch, CURLOPT_PROXY, $this->proxyAddress);
-        curl_setopt($ch, CURLOPT_PROXYPORT, $this->proxyPort);
+        curl_setopt($this->curlConnection, CURLOPT_PROXY, $this->proxyAddress);
+        curl_setopt($this->curlConnection, CURLOPT_PROXYPORT, $this->proxyPort);
     }
 
-    $r = curl_exec($ch); //echo '<pre>'; var_dump($r); echo '</pre>';
+    $r = curl_exec($this->curlConnection); //echo '<pre>'; var_dump($r); echo '</pre>';
 
     if($return_xml) {
       try 
@@ -1120,8 +1122,8 @@ class QuickBase
 
       $response = $this->transmit($xml_packet, 'API_SignOut', $this->qb_ssl."main");
     }
-    else {
-      $url_string="https://www.quickbase.com/db/main?act=API_SignOut&ticket=". $this->ticket;
+    else {      
+      $url_string = $this->qb_ssl . "main?act=API_SignOut&ticket=". $this->ticket;
 
       $response = $this->transmit($url_string);
     }
