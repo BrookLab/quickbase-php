@@ -2,7 +2,7 @@
 
 class QuickBase
 {
-
+  const SESSION_PREFIX = 'QuickBaseAPI_';
  /*---------------------------------------------------------------------
  // User Configurable Options
  -----------------------------------------------------------------------*/
@@ -31,8 +31,43 @@ class QuickBase
   var $ticket = '';
 
  /* --------------------------------------------------------------------*/  
+ 
+  private function unserializeFromSession() {
+   
+    if (0 == strncasecmp(PHP_SAPI, 'cli', 3) || !isset($_SERVER['HTTP_HOST']))
+      return false;
+   
+    $timeName = self::SESSION_PREFIX.'authtime';
+        
+    if (isset($_SESSION[$timeName]))
+    {
+      if ($_SESSION[$timeName] + $this->ticketHours * 3600 - $this->timeout < time())
+      {
+        unset($_SESSION[$timeName]);
+        return false;
+      }
+            
+      $xml = new SimpleXMLElement('<qdbapi></qdbapi>');
+      $xml->addChild('ticket', $_SESSION[self::SESSION_PREFIX.'ticket']);
+      $xml->addChild('user_id', $_SESSION[self::SESSION_PREFIX.'userid']);
+         
+      $this->ticket = $xml->ticket;
+      $this->user_id = $xml->user_id;
+            
+      return true;
+    }
+    else
+      return false;
+  }
+    
+  private function serializeToSession($ticket, $userID, $startTime){
+        
+    $_SESSION[self::SESSION_PREFIX.'ticket'] = (string)$ticket;
+    $_SESSION[self::SESSION_PREFIX.'userid'] = (string)$userID;
+    $_SESSION[self::SESSION_PREFIX.'authtime'] = $startTime;
+  }
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false) {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false) {
     
     if($un) {
       $this->username = $un;
@@ -73,8 +108,14 @@ class QuickBase
     $this->validateResults = $validate_results;
     
     $this->curlConnection = curl_init();
-
-    $this->authenticate();    
+    
+    $time = time();
+    
+    if (!$use_session || !$this->unserializeFromSession())
+      $this->authenticate();
+      
+    if ($use_session)
+      $this->serializeToSession($this->ticket, $this->user_id, $time);
   }
 
   public function set_xml_mode($bool) {
