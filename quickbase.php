@@ -32,7 +32,7 @@ class QuickBase
 
  /* --------------------------------------------------------------------*/  
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = true) {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false) {
     
     if($un) {
       $this->username = $un;
