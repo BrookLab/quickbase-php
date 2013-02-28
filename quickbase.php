@@ -16,9 +16,7 @@ class QuickBase
   var $user_id = 0;
   var $qb_site = "www.quickbase.com";
   var $qb_ssl = "https://www.quickbase.com/db/";
-  var $ticketHours = '';
-  var $proxyAddress = false;
-  var $proxyPort;
+  var $ticketHours = '';  
   var $curlConnection = NULL;
   var $validateResults;
 
@@ -97,17 +95,22 @@ class QuickBase
     
     if($hours) {
       $this->ticketHours = (int) $hours;
-    }   
+    }  
     
-    if($proxy_address) {
-        $this->proxyAddress = $proxy_address;
-        $this->proxyPort = $proxy_port;
-    }
-
     $this->xml = $usexml;
     $this->validateResults = $validate_results;
     
     $this->curlConnection = curl_init();
+    
+    curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_setopt($this->curlConnection, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($this->curlConnection, CURLOPT_TIMEOUT, $this->timeout);
+    curl_setopt($this->curlConnection, CURLOPT_FOLLOWLOCATION, false);
+    
+    if ($proxy_address){     
+        curl_setopt($this->curlConnection, CURLOPT_PROXY, $proxy_address);
+        curl_setopt($this->curlConnection, CURLOPT_PROXYPORT, $proxy_port);
+    }
     
     $time = time();
     
@@ -120,6 +123,12 @@ class QuickBase
 
   public function set_xml_mode($bool) {
     $this->xml = $bool;
+    
+    if(!$this->xml){
+      curl_setopt($this->curlConnection, CURLOPT_POST, false);
+      curl_setopt($this->curlConnection, CURLOPT_HTTPHEADER, array());
+      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, '');
+    }
   }
   public function set_database_table($db) {
     $this->db_id = $db;
@@ -171,27 +180,17 @@ class QuickBase
 
       $this->input = $input; //echo '<pre>'; var_dump($this->input); echo '</pre>';
 
-      curl_setopt($this->curlConnection, CURLOPT_URL, $url);      
-      
       curl_setopt($this->curlConnection, CURLOPT_POST, true);
       curl_setopt($this->curlConnection, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, $input);
-      curl_setopt($this->curlConnection, CURLOPT_FOLLOWLOCATION, false);
+      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, $input);      
     }
     else
     {
-      curl_setopt($this->curlConnection, CURLOPT_URL, $this->input = $input);  
+      $url = $this->input = $input;      
     }
     
-    curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
-    curl_setopt($this->curlConnection, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($this->curlConnection, CURLOPT_TIMEOUT, $this->timeout);
+    curl_setopt($this->curlConnection, CURLOPT_URL, $url);  
     
-    if ($this->proxyAddress){     
-        curl_setopt($this->curlConnection, CURLOPT_PROXY, $this->proxyAddress);
-        curl_setopt($this->curlConnection, CURLOPT_PROXYPORT, $this->proxyPort);
-    }
-
     $r = curl_exec($this->curlConnection); //echo '<pre>'; var_dump($r); echo '</pre>';
 
     if($return_xml) {
