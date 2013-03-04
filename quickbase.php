@@ -643,7 +643,7 @@ class QuickBase
 
       $response = $this->transmit($xml_packet, 'API_DoQueryCount');
     } else {
-      $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQueryCount&ticket=". $this->ticket . "apptoken=" . $this->app_token;
+      $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQueryCount&ticket=". $this->ticket . "&apptoken=" . $this->app_token;
 
       $response = $this->transmit($url_string);
     }
