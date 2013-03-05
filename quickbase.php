@@ -585,7 +585,7 @@ class QuickBase
     }
     else { // If not an xml packet
       $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQuery&ticket=". $this->ticket
-          ."&fmt=".$fmt;
+          ."&fmt=".$fmt.'&includeRids=1';
     
       $pos = 0;
       
