@@ -341,7 +341,7 @@ class QuickBase
       if($response) {
         return $response;
       }
-      throw new Zend_Exception("QuickBase: Add_Record Failed. \n Request: \n" . $xml_packet->asXML() . "\n Response: " . $response->asXML());
+      throw new Exception("QuickBase: Add_Record Failed. \n Request: \n" . $xml_packet->asXML() . "\n Response: " . $response->asXML());
   }
 
   /* API_ChangePermission: https://www.quickbase.com/up/6mztyxu8/g/rc7/en/va/QuickBaseAPI.htm#_Toc126579974 */
