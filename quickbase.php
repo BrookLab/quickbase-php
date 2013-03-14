@@ -20,6 +20,7 @@ class QuickBase
   var $curlConnection = NULL;
   var $validateResults;
   var $certificateFile = 'quickbase.crt';
+  var $preventUTFConverting = false;
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -66,7 +67,7 @@ class QuickBase
     $_SESSION[self::SESSION_PREFIX.'authtime'] = $startTime;
   }
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false, $use_certificate = false) {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false, $use_certificate = false, $prevent_utf_converting = false) {
     
     if($un) {
       $this->username = $un;
@@ -97,6 +98,9 @@ class QuickBase
     if($hours) {
       $this->ticketHours = (int) $hours;
     }  
+    
+    if ($prevent_utf_converting)
+      $this->preventUTFConverting = $prevent_utf_converting;
     
     $this->xml = $usexml;
     $this->validateResults = $validate_results;
@@ -209,6 +213,9 @@ class QuickBase
           
         try
         {
+          if ($this->preventUTFConverting)
+            $r = preg_replace('/>(.*)&#(.*);(.*)<\//', '><![CDATA[$1&#$2;$3]]></', $r);
+          
           @$response = new SimpleXMLElement($r);
         }
         catch (Exception $e)
