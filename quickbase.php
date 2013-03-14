@@ -2,7 +2,7 @@
 
 class QuickBase
 {
-
+  const SESSION_PREFIX = 'QuickBaseAPI_';
  /*---------------------------------------------------------------------
  // User Configurable Options
  -----------------------------------------------------------------------*/
@@ -17,6 +17,10 @@ class QuickBase
   var $qb_site = "www.quickbase.com";
   var $qb_ssl = "https://www.quickbase.com/db/";
   var $ticketHours = '';  
+  var $curlConnection = NULL;
+  var $validateResults;
+  var $certificateFile = 'quickbase.crt';
+  var $preventUTFConverting = false;
 
  /*---------------------------------------------------------------------
  // Do Not Change
@@ -27,8 +31,43 @@ class QuickBase
   var $ticket = '';
 
  /* --------------------------------------------------------------------*/  
+ 
+  private function unserializeFromSession() {
+   
+    if (0 == strncasecmp(PHP_SAPI, 'cli', 3) || !isset($_SERVER['HTTP_HOST']))
+      return false;
+   
+    $timeName = self::SESSION_PREFIX.'authtime';
+        
+    if (isset($_SESSION[$timeName]))
+    {
+      if ($_SESSION[$timeName] + $this->ticketHours * 3600 - $this->timeout < time())
+      {
+        unset($_SESSION[$timeName]);
+        return false;
+      }
+            
+      $xml = new SimpleXMLElement('<qdbapi></qdbapi>');
+      $xml->addChild('ticket', $_SESSION[self::SESSION_PREFIX.'ticket']);
+      $xml->addChild('user_id', $_SESSION[self::SESSION_PREFIX.'userid']);
+         
+      $this->ticket = $xml->ticket;
+      $this->user_id = $xml->user_id;
+            
+      return true;
+    }
+    else
+      return false;
+  }
+    
+  private function serializeToSession($ticket, $userID, $startTime){
+        
+    $_SESSION[self::SESSION_PREFIX.'ticket'] = (string)$ticket;
+    $_SESSION[self::SESSION_PREFIX.'userid'] = (string)$userID;
+    $_SESSION[self::SESSION_PREFIX.'authtime'] = $startTime;
+  }
 
-  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '') {
+  public function __construct($un, $pw, $usexml = true, $db = '', $token = '', $realm = '', $hours = '', $proxy_address = false, $proxy_port = '', $validate_results = false, $use_session = false, $use_certificate = false, $prevent_utf_converting = false) {
     
     if($un) {
       $this->username = $un;
@@ -58,18 +97,78 @@ class QuickBase
     
     if($hours) {
       $this->ticketHours = (int) $hours;
-    }   
-
+    }  
+    
+    if ($prevent_utf_converting)
+      $this->preventUTFConverting = $prevent_utf_converting;
+    
     $this->xml = $usexml;
-
-    $this->authenticate();    
+    $this->validateResults = $validate_results;
+    
+    $this->curlConnection = curl_init();
+    
+    curl_setopt($this->curlConnection, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($this->curlConnection, CURLOPT_TIMEOUT, $this->timeout);
+    curl_setopt($this->curlConnection, CURLOPT_FOLLOWLOCATION, false);
+    
+    if ($proxy_address){     
+        curl_setopt($this->curlConnection, CURLOPT_PROXY, $proxy_address);
+        curl_setopt($this->curlConnection, CURLOPT_PROXYPORT, $proxy_port);
+    }
+    
+    if ($use_certificate && is_file($this->certificateFile)){
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, true);
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYHOST, 2);
+      curl_setopt($this->curlConnection, CURLOPT_CAINFO, $this->certificateFile); 
+    }
+    else
+      curl_setopt($this->curlConnection, CURLOPT_SSL_VERIFYPEER, FALSE);
+    
+    $time = time();
+    
+    if (!$use_session || !$this->unserializeFromSession())
+      $this->authenticate();
+      
+    if ($use_session)
+      $this->serializeToSession($this->ticket, $this->user_id, $time);
   }
 
   public function set_xml_mode($bool) {
     $this->xml = $bool;
+    
+    if(!$this->xml){
+      curl_setopt($this->curlConnection, CURLOPT_POST, false);
+      curl_setopt($this->curlConnection, CURLOPT_HTTPHEADER, array());
+      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, '');
+    }
   }
   public function set_database_table($db) {
     $this->db_id = $db;
+  }
+  
+  public function hasError($obj) {
+    return $this->getErrorCode($obj) != 0; 
+  }
+  
+  public function getErrorCode($obj) {
+    if (is_object($obj) && is_object($obj->errcode)) 	
+      return $obj->errcode;		
+    else		
+      return -255;
+  }
+  
+  public function getErrorString($obj) {
+    $str = '';
+    
+    if (is_object($obj)) {
+      if (is_object($obj->errtext)) 	
+        $str .= $obj->errtext.'; ';
+      
+      if (is_object($obj->errdetail))
+        $str .= $obj->errdetail;
+    }
+    
+    return $str;
   }
 
   private function transmit($input, $action_name = "", $url = "", $return_xml = true) { 
@@ -93,45 +192,48 @@ class QuickBase
 
       $this->input = $input; //echo '<pre>'; var_dump($this->input); echo '</pre>';
 
-      $ch = curl_init($url);
-      curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
-      curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-      // Set timeout
-      curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
-
+      curl_setopt($this->curlConnection, CURLOPT_POST, true);
+      curl_setopt($this->curlConnection, CURLOPT_HTTPHEADER, $headers);
+      curl_setopt($this->curlConnection, CURLOPT_POSTFIELDS, $input);      
     }
     else
     {
-      $ch = curl_init($input);
-      curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_POST, true); 
-      // Set timeout
-      curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
-
-      $this->input = $input;
+      $url = $this->input = $input;      
     }
-
-    $r = curl_exec($ch); //echo '<pre>'; var_dump($r); echo '</pre>';
+    
+    curl_setopt($this->curlConnection, CURLOPT_URL, $url);  
+    
+    $r = curl_exec($this->curlConnection); //echo '<pre>'; var_dump($r); echo '</pre>';
 
     if($return_xml) {
-      if (!$r)
+      try 
       {
-        if ($this->xml instanceof SimpleXMLElement)
-          throw new Exception('QuickBase: Authentication Failed against realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n" . $this->xml->asXML());
-        else
-          throw new Exception('QuickBase: Authentication Failed against realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n" . $this->xml);
+        if (!$r)
+          throw new Exception('Can not create connection with Quickbase server for realm: "' . $this->qb_site.'" using user "'.$this->username.'" '."\n");
+          
+        try
+        {
+          if ($this->preventUTFConverting)
+            $r = preg_replace('/>(.*)&#(.*);(.*)<\//', '><![CDATA[$1&#$2;$3]]></', $r);
+          
+          @$response = new SimpleXMLElement($r);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception(strip_tags($r));
+        }
+        
+        if ($this->validateResults && $this->hasError($response))
+          throw new Exception($this->getErrorString($response));
       }
-
-      $response = new SimpleXMLElement($r);
+      catch (Exception $e)
+      {
+        throw new Exception('QuickBase Error: '.$e->getMessage());
+      }
     }
     else {
       $response = $r;
-    }
+    }    
 
     return $response;
   }
@@ -246,7 +348,7 @@ class QuickBase
       if($response) {
         return $response;
       }
-      throw new Zend_Exception("QuickBase: Add_Record Failed. \n Request: \n" . $xml_packet->asXML() . "\n Response: " . $response->asXML());
+      throw new Exception("QuickBase: Add_Record Failed. \n Request: \n" . $xml_packet->asXML() . "\n Response: " . $response->asXML());
   }
 
   /* API_ChangePermission: https://www.quickbase.com/up/6mztyxu8/g/rc7/en/va/QuickBaseAPI.htm#_Toc126579974 */
@@ -490,7 +592,7 @@ class QuickBase
     }
     else { // If not an xml packet
       $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQuery&ticket=". $this->ticket
-          ."&fmt=".$fmt;
+          ."&fmt=".$fmt.'&includeRids=1';
     
       $pos = 0;
       
@@ -548,7 +650,7 @@ class QuickBase
 
       $response = $this->transmit($xml_packet, 'API_DoQueryCount');
     } else {
-      $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQueryCount&ticket=". $this->ticket . "apptoken=" . $this->app_token;
+      $url_string = $this->qb_ssl . $this->db_id. "?act=API_DoQueryCount&ticket=". $this->ticket . "&apptoken=" . $this->app_token. ($qid ? '&qid='.$qid : '&query='.$query);
 
       $response = $this->transmit($url_string);
     }
@@ -1112,8 +1214,8 @@ class QuickBase
 
       $response = $this->transmit($xml_packet, 'API_SignOut', $this->qb_ssl."main");
     }
-    else {
-      $url_string="https://www.quickbase.com/db/main?act=API_SignOut&ticket=". $this->ticket;
+    else {      
+      $url_string = $this->qb_ssl . "main?act=API_SignOut&ticket=". $this->ticket;
 
       $response = $this->transmit($url_string);
     }
