@@ -994,13 +994,22 @@ class QuickBase
   public function import_from_csv ($records_csv, $clist, $skip_first = 0) {
     if($this->xml) {
       $xml_packet = new SimpleXMLElement('<qdbapi></qdbapi>');
-      $xml_packet->addChild('records_csv',$records_csv);
+
+      $xml_records_csv = $xml_packet->addChild('records_csv');
+      $node = dom_import_simplexml($xml_records_csv);
+      $node->appendChild($node->ownerDocument->createCDATASection($records_csv));
+	  
       $xml_packet->addChild('clist',$clist);
       $xml_packet->addChild('skipfirst',$skip_first);
       $xml_packet->addChild('ticket',$this->ticket);
+	  
+      if ($this->app_token) {
+        $xml_packet->addChild('apptoken', $this->app_token);
+      }
+
       $xml_packet = $xml_packet->asXML();
 
-      $response = $this->transmit($xml_packet, 'API_ImportFormCSV');
+      $response = $this->transmit($xml_packet, 'API_ImportFromCSV');
     }
 
     if($response) {
@@ -1159,11 +1168,16 @@ class QuickBase
       $xml_packet->addChild('id',$id);
 
       $xml_packet->addChild('ticket',$this->ticket);
+
+      if ($this->app_token) {
+        $xml_packet->addChild('apptoken', $this->app_token);
+      }
+
       $xml_packet = $xml_packet->asXML();
       $response = $this->transmit($xml_packet, 'API_RunImport');      
     }
     else {
-      $url_string = $this->qb_ssl . $this->db_id.'?act=API_RunImport&ticket='. $this->ticket .'&id='. $id;
+      $url_string = $this->qb_ssl . $this->db_id.'?act=API_RunImport&ticket='. $this->ticket .'&id='. $id . '&apptoken=' . $this->app_token;
       $response = $this->transmit($url_string);
     }
     
